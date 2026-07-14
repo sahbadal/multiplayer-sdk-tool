@@ -1,8 +1,8 @@
 # Architecture
 
-## Layered architecture
+## Layered Architecture
 
-```
+```text
 ┌──────────────────────────────────────┐
 │      Unity Game UI / Gameplay        │
 └──────────────────┬───────────────────┘
@@ -10,23 +10,28 @@
                     ▼
 ┌──────────────────────────────────────┐
 │            SDK Public API            │
-│  Session | Player | Matchmaking      │
-│  RPC / Events | Voice                │
+│ Session | Player | Matchmaking       │
+│ RPC / Events | Voice                 │
 └──────────────────┬───────────────────┘
                     │ calls
                     ▼
 ┌──────────────────────────────────────┐
 │             SDK Services             │
+│ Core | Session | Player              │
+│ Matchmaking | RPC | Voice            │
 └──────────────────┬───────────────────┘
                     │ reads
                     ▼
 ┌──────────────────────────────────────┐
-│        ScriptableObject Config       │
+│     ScriptableObject Configuration   │
+│ SDK | Session | Player               │
+│ Matchmaking | RPC | Voice            │
 └──────────────────┬───────────────────┘
                     │ used by
                     ▼
 ┌──────────────────────────────────────┐
 │         Photon Adapter Layer         │
+│ Fusion Adapter | Voice Adapter       │
 └──────────────────┬───────────────────┘
                     │ wraps
                     ▼
@@ -35,73 +40,185 @@
 └──────────────────────────────────────┘
 ```
 
-Each layer only talks to the layer directly below it — the game never
-sees Fusion types, and only the adapter layer imports Fusion/Voice
-namespaces. If Fusion's API changes in a future SDK version, only the
-adapter layer changes; everything above it is untouched.
+Each layer only communicates with the layer directly below it.
 
-## Module scope
+Game code never depends directly on Photon Fusion or Photon Voice APIs.
+
+Only the Adapter Layer imports Photon namespaces.
+
+If Photon changes in a future version, only the adapter layer should require modification.
+
+---
+
+# Configuration Architecture
+
+The SDK uses a centralized configuration model based on ScriptableObjects.
 
 ```
+SdkConfig.asset
+│
+├── SessionConfig.asset
+├── PlayerConfig.asset
+├── MatchmakingConfig.asset
+├── RpcConfig.asset
+└── VoiceConfig.asset
+```
+
+`SdkConfig.asset` acts as the root configuration and owns references to every module configuration.
+
+Individual modules only read the configuration they own.
+
+---
+
+## Developer-facing Configuration
+
+Every module exposes only the settings required by the developer.
+
+| Configuration | Typical Settings |
+|---------------|------------------|
+| **SdkConfig.asset** | Fusion App ID, Voice App ID, Default Region, Default Game Mode, Max Players, Enable Voice, Enable Debug Logs |
+| **SessionConfig.asset** | Session Name, Network Topology, Gameplay Mode, Max Players, Is Visible, Is Open, Custom Session Properties |
+| **PlayerConfig.asset** | Player Prefab, Spawn Strategy, Spawn Points, Auto Spawn, Auto Despawn, Transform Synchronization, Authority Mode |
+| **MatchmakingConfig.asset** | Queue / Mode Name, Region, Max Players, Session Filters, Create Session If Not Found, Search Timeout |
+| **RpcConfig.asset** | Enable RPC Helpers, Default Target, Payload Size Limit, Registered Events, Rate Limiting, Event Validation |
+| **VoiceConfig.asset** | Enable Voice, Auto Connect Voice, Mute On Start, Voice Interest Group, Recorder Reference, Speaker Strategy, Speaking Detection |
+
+> The Setup Window edits these assets. It is **not** another configuration source.
+
+---
+
+# Module Scope
+
+```text
 Unity Photon Multiplayer SDK
 │
-├── Core            — Bootstrap, Configuration, SDK state, Validation, Logging
-├── Session         — Connect, Create, Join, Leave, Session state
-├── Player          — Prefab setup, Spawn, Despawn, Transform sync, Registration
-├── Matchmaking     — Quick match, Session search, Filters, Create-if-not-found, Cancel
-├── RPC             — Broadcast events, Targeted events, Authority requests, Event registration, Validation
-├── Voice           — Voice connection, Microphone mute, Remote mute, Speaking status, Lifecycle
-└── Editor Tooling  — Setup window, Config editors, Prefab setup, Scene setup, Validation dashboard
+├── Core
+│   ├── Bootstrap
+│   ├── Configuration
+│   ├── SDK State
+│   ├── Validation
+│   └── Logging
+│
+├── Session
+│   ├── Connect
+│   ├── Create Session
+│   ├── Join Session
+│   ├── Leave Session
+│   └── Session State
+│
+├── Player
+│   ├── Prefab Setup
+│   ├── Spawn
+│   ├── Despawn
+│   ├── Registration
+│   ├── Transform Synchronization
+│   └── Authority
+│
+├── Matchmaking
+│   ├── Quick Match
+│   ├── Session Search
+│   ├── Session Filters
+│   ├── Create If Not Found
+│   └── Cancel
+│
+├── RPC
+│   ├── Broadcast Events
+│   ├── Targeted Events
+│   ├── Authority Requests
+│   ├── Event Registration
+│   ├── Payload Validation
+│   └── Event Dispatch
+│
+├── Voice
+│   ├── Voice Connection
+│   ├── Local Recorder
+│   ├── Remote Speakers
+│   ├── Microphone Mute
+│   ├── Remote Player Mute
+│   ├── Speaking Status
+│   └── Voice Lifecycle
+│
+└── Editor Tooling
+    ├── Setup Window
+    ├── Config Editors
+    ├── Prefab Setup
+    ├── Scene Setup
+    ├── Validation Dashboard
+    ├── Diagnostics
+    └── Safe Auto Fixes
 ```
 
-Full detail on every item is in `02-module-reference.md`.
+See **02-module-reference.md** for detailed responsibilities of every module.
 
-## Source-of-truth rules
+---
 
-Every setting lives in exactly one place. Nothing is duplicated across
-two inspectors or two files.
+# Source of Truth Rules
 
-| Setting | Lives in |
-|---|---|
-| Photon-owned values (App IDs, region list) | Photon's own settings assets |
-| SDK-wide settings | `SdkConfig.asset` |
-| Session defaults | `SessionConfig.asset` |
-| Player setup | `PlayerConfig.asset` |
-| Matchmaking defaults | `MatchmakingConfig.asset` |
-| RPC/event rules | `RpcConfig.asset` |
-| Voice behavior | `VoiceConfig.asset` |
-| Scene bootstrap reference | `MultiplayerBootstrap` component in the scene |
+Every setting exists in exactly one location.
 
-The Setup Window (`03-editor-tooling.md`) is only the *editing surface*
-for these files — it never becomes a second storage location. When the
-developer types an App ID into the Setup Window, it writes to Photon's
-settings asset, not to a separate SDK-owned copy.
+No duplicated configuration is allowed.
 
-## Production rules
+| Setting | Source of Truth |
+|----------|-----------------|
+| Photon App IDs | Photon Settings Asset |
+| Photon Region List | Photon Settings Asset |
+| SDK-wide Settings | `SdkConfig.asset` |
+| Session Defaults | `SessionConfig.asset` |
+| Player Setup | `PlayerConfig.asset` |
+| Matchmaking Defaults | `MatchmakingConfig.asset` |
+| RPC Rules | `RpcConfig.asset` |
+| Voice Behaviour | `VoiceConfig.asset` |
+| Scene Bootstrap | `MultiplayerBootstrap` |
 
-These are hard constraints the implementation must follow, independent of
-which module is being written:
+The Setup Window edits these assets but never becomes another storage location.
 
-1. Important references are always explicit, serialized fields — never
-   resolved by searching the scene at runtime.
-2. Runtime code never uses `GameObject.Find`, tag lookups, or
-   `Resources.Load` by convention as its primary mechanism — see the
-   detection priority order in `03-editor-tooling.md`.
-3. Tags are never required for core SDK behavior.
-4. Recommended folder structure is a convenience, not a hard requirement.
-5. ScriptableObject assets are the single configuration source of truth.
-6. The SDK never modifies a developer's prefab without explicit
-   confirmation.
-7. Safe automatic fixes are always visibly separated from destructive
-   changes — never the same code path.
-8. Generated files are stored separately from developer-owned files.
-9. Only one active SDK bootstrap is allowed per scene.
-10. Voice always remains optional — no other module depends on it being
-    connected.
-11. RPC/event identifiers must stay unique and stable.
-12. Matchmaking cancellation must be safe at every stage of the flow.
-13. Common Photon boilerplate is hidden by default.
-14. Advanced Photon APIs stay reachable for cases the simplified surface
-    doesn't cover.
-15. The SDK never controls game UI or gameplay design — it manages
-    networking, not the game.
+---
+
+# Runtime Configuration Flow
+
+```text
+Developer edits configuration
+            │
+            ▼
+SDK Setup Window
+            │
+            ▼
+ScriptableObject Assets
+            │
+            ▼
+MultiplayerBootstrap
+            │
+            ▼
+SDK Services
+            │
+            ▼
+Photon Adapter Layer
+            │
+            ▼
+Photon Fusion / Photon Voice
+```
+
+---
+
+# Production Rules
+
+1. Important references must always use explicit serialized references.
+2. Runtime code must never rely on `GameObject.Find`, tags or naming conventions.
+3. Runtime must not depend on `Resources.Load` as the primary loading mechanism.
+4. Tags are optional and never required.
+5. Folder conventions improve organization but are never mandatory.
+6. ScriptableObjects are the single source of configuration.
+7. Every setting has exactly one owner.
+8. The SDK Setup Window is only an editor, not a storage layer.
+9. The SDK must never modify a developer prefab without confirmation.
+10. Automatic fixes must clearly distinguish safe changes from destructive changes.
+11. Generated files must never overwrite developer-owned assets.
+12. Only one `MultiplayerBootstrap` may exist per active scene.
+13. Voice remains completely optional.
+14. RPC/Event identifiers must remain unique and stable.
+15. Matchmaking cancellation must be safe from every state.
+16. Common Photon boilerplate should be hidden from the developer.
+17. Advanced Photon APIs must remain accessible.
+18. The SDK manages networking only and never game UI or gameplay.
+19. Configuration assets should be reusable across scenes.
+20. Runtime modules must never directly modify configuration assets.
