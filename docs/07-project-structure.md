@@ -36,7 +36,7 @@ Assets/
     │       └── VoiceConfig.asset
     │
     ├── NetworkEvents/
-    ├── Documentation/     ← these doc files live here
+    ├── Documentation/     
     ├── Samples/
     └── Tests/
 ```
