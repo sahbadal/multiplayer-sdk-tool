@@ -1,3 +1,4 @@
+> 📐 **[Click here for the full detailed architecture diagram →](https://sahbadal.github.io/multiplayer-sdk-tool/sdk-master-architecture.html)**
 # Architecture
 
 ## Layered Architecture
