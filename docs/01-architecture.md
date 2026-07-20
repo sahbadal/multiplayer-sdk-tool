@@ -78,12 +78,12 @@ Every module exposes only the settings required by the developer.
 
 | Configuration | Typical Settings |
 |---------------|------------------|
-| **SdkConfig.asset** | Fusion App ID, Voice App ID, Default Region, Default Game Mode, Max Players, Enable Voice, Enable Debug Logs |
-| **SessionConfig.asset** | Session Name, Network Topology, Gameplay Mode, Max Players, Is Visible, Is Open, Custom Session Properties |
-| **PlayerConfig.asset** | Player Prefab, Spawn Strategy, Spawn Points, Auto Spawn, Auto Despawn, Transform Synchronization, Authority Mode |
-| **MatchmakingConfig.asset** | Queue / Mode Name, Region, Max Players, Session Filters, Create Session If Not Found, Search Timeout |
-| **RpcConfig.asset** | Enable RPC Helpers, Default Target, Payload Size Limit, Registered Events, Rate Limiting, Event Validation |
-| **VoiceConfig.asset** | Enable Voice, Auto Connect Voice, Mute On Start, Voice Interest Group, Recorder Reference, Speaker Strategy, Speaking Detection |
+| **SdkConfig.asset** | Fusion App ID, Voice App ID, Default Region, Enable Debug Logs |
+| **SessionConfig.asset** | Session Name, Network Topology, Max Players, Is Visible, Is Open, Custom Session Properties |
+| **PlayerConfig.asset** | Player Prefab, Auto Spawn, Auto Despawn |
+| **MatchmakingConfig.asset** | Create Session If Not Found, Matchmaking Timeout |
+| **RpcConfig.asset** | Enable RPC Validation, Enable RPC Logging, Max Payload Size |
+| **VoiceConfig.asset** | Enable Voice, Auto Connect, Mute On Start, Enable Voice Detection |
 
 > The Setup Window edits these assets. It is **not** another configuration source.
 
